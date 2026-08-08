@@ -1,0 +1,145 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BeatBall — Data Validator</title>
+<style>
+  body{ font:14px/1.5 ui-monospace,Menlo,Consolas,monospace; max-width:860px; margin:18px auto;
+        padding:0 14px; color:#111; background:#fafafa; }
+  h1{ font-size:16px; } h2{ font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin:18px 0 6px; }
+  .controls{ background:#fff; border:1px solid #ccc; border-radius:6px; padding:12px; margin:10px 0; }
+  textarea{ width:100%; box-sizing:border-box; height:90px; font:12px ui-monospace; margin-top:6px; }
+  button{ font:13px ui-monospace; padding:8px 14px; border:1px solid #333; background:#111; color:#fff;
+          border-radius:5px; cursor:pointer; margin-top:8px; }
+  input[type=file]{ font:12px ui-monospace; margin-top:8px; display:block; }
+  .summary{ display:flex; gap:8px; margin:12px 0; }
+  .pill{ flex:1; border-radius:6px; padding:10px; text-align:center; border:1px solid #ccc; background:#fff; }
+  .pill .n{ font-size:20px; font-weight:700; display:block; }
+  .pill.err{ border-color:#c33; } .pill.err .n{ color:#c33; }
+  .pill.warn{ border-color:#e6a700; } .pill.warn .n{ color:#b26b00; }
+  .pill.ok{ border-color:#0a7; } .pill.ok .n{ color:#0a7; }
+  .bar{ height:8px; background:#eee; border-radius:4px; overflow:hidden; margin-top:6px; }
+  .bar > i{ display:block; height:100%; background:#0a7; }
+  ul{ list-style:none; padding:0; } li{ padding:6px 10px; border-radius:4px; margin:3px 0; background:#fff; border:1px solid #eee; }
+  li .loc{ color:#666; } li.e{ border-left:3px solid #c33; } li.w{ border-left:3px solid #e6a700; }
+  .clean{ color:#0a7; padding:8px; }
+</style>
+<h1>BeatBall — Data Validator</h1>
+<div class="controls">
+  <b>Report below updates live.</b> On open it validates the seeded Cavs example.
+  To check your own data, paste the JSON here and tap Validate:
+  <textarea id="paste" placeholder="paste beatball-data.json contents here..."></textarea>
+  <button onclick="runPaste()">Validate pasted JSON</button>
+  <input type="file" id="file" accept=".json">
+</div>
+<div id="report"></div>
+
+<script>
+const POSITIONS = ['PG','SG','SF','PF','C'];
+const ACCOLADES = ['DPOY','ALLDEF1','ALLDEF2'];
+const STAT_KEYS = ['pts','tpm','reb','ast','stl','blk','fg','to'];
+const RANGE = { pts:[0,40], tpm:[0,6], reb:[0,20], ast:[0,15], stl:[0,4], blk:[0,5], fg:[0.25,0.75], to:[0,6] };
+const CAPPCT_MAX = 0.45;
+const TEAM_MIN=8, TEAM_MAX=12, TARGET_TEAMS=32;
+
+function validate(data){
+  const errors=[], warnings=[], seenTeamIds=new Set(), seenPlayerIds=new Set();
+  let totalPlayers=0, filledPlayers=0; const shapesSeen={};
+  const err=(loc,msg)=>errors.push({loc,msg});
+  const warn=(loc,msg)=>warnings.push({loc,msg});
+
+  if(!data.teams || !Array.isArray(data.teams)){ err('root','no `teams` array'); return {errors,warnings,totalPlayers:0,filledPlayers:0}; }
+  if(!data._salaryCaps) warn('root','no `_salaryCaps` table — capPct can\'t be verified across eras');
+
+  for(const t of data.teams){
+    const tloc = t.id || t.team || '(unnamed team)';
+    if(!t.id) err(tloc,'team missing `id`');
+    else if(seenTeamIds.has(t.id)) err(tloc,'duplicate team id "'+t.id+'"'); else seenTeamIds.add(t.id);
+    if(!t.season) err(tloc,'team missing `season`');
+    else if(data._salaryCaps && !(t.season in data._salaryCaps)) err(tloc,'season "'+t.season+'" not in _salaryCaps');
+    if(t.shape) shapesSeen[t.shape]=(shapesSeen[t.shape]||0)+1;
+
+    const players=t.players||[];
+    if(players.length<TEAM_MIN) warn(tloc,'only '+players.length+' players (want ~10)');
+    if(players.length>TEAM_MAX) warn(tloc,players.length+' players (more than ~10)');
+
+    for(const p of players){
+      totalPlayers++;
+      const ploc = tloc+' / '+(p.name||p.id||'(unnamed)');
+      if(!p.id) err(ploc,'missing `id`');
+      else if(seenPlayerIds.has(p.id)) err(ploc,'duplicate id "'+p.id+'"'); else seenPlayerIds.add(p.id);
+      if(!p.name) err(ploc,'missing `name`');
+      if(p.capPct==null) warn(ploc,'capPct missing');
+      else if(typeof p.capPct!=='number') err(ploc,'capPct not a number');
+      else if(p.capPct<0||p.capPct>CAPPCT_MAX) warn(ploc,'capPct '+p.capPct+' out of range — looks like raw dollars or a %');
+      if(p.accolades) for(const a of p.accolades) if(!ACCOLADES.includes(a)) err(ploc,'invalid accolade "'+a+'"');
+
+      const incomplete = p._todo!=null || p.stats==null || p.eligible==null;
+      if(incomplete) continue;
+      filledPlayers++;
+
+      if(!Array.isArray(p.eligible)||p.eligible.length===0) err(ploc,'`eligible` must be a non-empty array');
+      else for(const pos of p.eligible) if(!POSITIONS.includes(pos)) err(ploc,'invalid position "'+pos+'"');
+
+      for(const k of STAT_KEYS){
+        const v=p.stats[k];
+        if(v==null){ err(ploc,'stats.'+k+' missing'); continue; }
+        if(typeof v!=='number'){ err(ploc,'stats.'+k+' not a number'); continue; }
+        if(k==='fg'&&v>1) warn(ploc,'fg '+v+' > 1 — use a decimal like 0.520');
+        const [lo,hi]=RANGE[k];
+        if(v<lo||v>hi) warn(ploc,'stats.'+k+' '+v+' outside '+lo+'-'+hi+' — misplaced decimal?');
+      }
+    }
+  }
+  const SHAPES=['superteam','top-heavy','two-star','one-star','balanced','outlier'];
+  const missing=SHAPES.filter(s=>!shapesSeen[s]);
+  if(data.teams.length&&missing.length) warn('curation','shapes not yet present: '+missing.join(', '));
+  if(data.teams.length<TARGET_TEAMS) warn('curation',data.teams.length+' of '+TARGET_TEAMS+' teams');
+  return {errors,warnings,totalPlayers,filledPlayers};
+}
+
+function render(data){
+  const r=validate(data);
+  const pct=r.totalPlayers?Math.round(r.filledPlayers/r.totalPlayers*100):0;
+  const listOf=(arr,cls)=>arr.length
+    ? '<ul>'+arr.map(i=>'<li class="'+cls+'"><span class="loc">'+i.loc+'</span> — '+i.msg+'</li>').join('')+'</ul>'
+    : '<div class="clean">&#10003; none</div>';
+  document.getElementById('report').innerHTML =
+    '<div class="summary">'
+    +'<div class="pill err"><span class="n">'+r.errors.length+'</span>errors</div>'
+    +'<div class="pill warn"><span class="n">'+r.warnings.length+'</span>warnings</div>'
+    +'<div class="pill ok"><span class="n">'+pct+'%</span>filled ('+r.filledPlayers+'/'+r.totalPlayers+')'
+    +'<div class="bar"><i style="width:'+pct+'%"></i></div></div></div>'
+    +'<h2>Errors — will break the game</h2>'+listOf(r.errors,'e')
+    +'<h2>Warnings — probable typos, eyeball each</h2>'+listOf(r.warnings,'w');
+}
+
+function runPaste(){
+  const txt=document.getElementById('paste').value.trim();
+  if(!txt){ render(EXAMPLE); return; }
+  try{ render(JSON.parse(txt)); }
+  catch(e){ document.getElementById('report').innerHTML='<li class="e">JSON won\'t parse: '+e.message+'</li>'; }
+}
+document.getElementById('file').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ try{ render(JSON.parse(rd.result)); }
+    catch(err){ document.getElementById('report').innerHTML='<li class="e">JSON won\'t parse: '+err.message+'</li>'; } };
+  rd.readAsText(f);
+});
+
+const EXAMPLE={ _salaryCaps:{'2015-16':70.0},
+  teams:[{ id:'cle-2016', team:'Cleveland Cavaliers', season:'2015-16', shape:'top-heavy', players:[
+    {id:'a',name:'LeBron James',eligible:['SF','PF'],capPct:0.328,accolades:[],stats:{pts:25.3,tpm:1.1,reb:7.4,ast:6.8,stl:1.4,blk:0.6,fg:0.520,to:3.3}},
+    {id:'b',name:'Kyrie Irving',eligible:['PG'],capPct:0.234,accolades:[],stats:{pts:19.6,tpm:1.6,reb:3.0,ast:4.7,stl:1.1,blk:0.3,fg:0.448,to:2.3}},
+    {id:'c',name:'Kevin Love',eligible:['PF','C'],capPct:0.281,accolades:[],stats:{pts:16.0,tpm:2.1,reb:9.9,ast:2.4,stl:0.8,blk:0.5,fg:0.419,to:1.8}},
+    {id:'d',name:'J.R. Smith',eligible:['SG'],capPct:0.071,accolades:[],stats:{pts:12.4,tpm:2.6,reb:2.8,ast:1.7,stl:1.1,blk:0.3,fg:0.415,to:0.8}},
+    {id:'e',name:'Tristan Thompson',eligible:['C'],capPct:0.204,accolades:[],stats:{pts:7.8,tpm:0.0,reb:9.0,ast:0.8,stl:0.5,blk:0.6,fg:0.588,to:0.7}},
+    {id:'f',name:'Matthew Dellavedova',eligible:null,capPct:0.016,accolades:[],stats:null,_todo:'fill'},
+    {id:'g',name:'Iman Shumpert',eligible:null,capPct:0.128,accolades:[],stats:null,_todo:'fill'},
+    {id:'h',name:'Channing Frye',eligible:null,capPct:0.117,accolades:[],stats:null,_todo:'fill'},
+    {id:'i',name:'Richard Jefferson',eligible:null,capPct:0.021,accolades:[],stats:null,_todo:'fill'},
+    {id:'j',name:'Timofey Mozgov',eligible:null,capPct:0.071,accolades:[],stats:null,_todo:'fill'}
+  ]}]};
+
+render(EXAMPLE);   // auto-run on load so the page is never blank
+</script>

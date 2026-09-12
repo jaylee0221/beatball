@@ -232,7 +232,7 @@ const spent=()=>S.picks.reduce((a,p)=>a+price(p),0);
 function slotFor(p){ if(!S.slots[p.eligible[0]]) return p.eligible[0]; return SLOTS.slice().sort((a,b)=>slotDist(p,a)-slotDist(p,b)).find(sl=>!S.slots[sl])||null; }
 function canPick(p,slot){ if(S.picks.some(q=>q.id===p.id)) return false; const left=4-S.picks.length; return spent()+price(p)+left*1<=CAP; }
 function pick(p,slot){ if(!canPick(p)||!S.pack) return; S.picks.push(p); S.draftIdx++;
-  if(S.picks.length===5){ S.picksPacks=S.packs; S.wheel=null; S.pack=null; S.lineup=bestLineup(S.picks); S.view='lineup'; render(); return; } spinWheel(); }
+  if(S.picks.length===5){ S.picksPacks=S.packs; S.wheel=null; S.pack=null; S.team=bestLineup(S.picks); startSeason(S.draftDaily?daySeed(dayKey()+':season'):null); return; } spinWheel(); }
 /* the line-up: all 120 ways to put five men in five spots; keep the one with the highest net after position penalties */
 function bestLineup(men){ let best=null; const perm=(arr,acc)=>{ if(!arr.length){ const v=fiveNet(acc); if(!best||v>best.v) best={v,five:acc.slice()}; return; } arr.forEach((p,i)=>perm(arr.filter((_,j)=>j!==i),acc.concat([p]))); }; perm(men,[]); return best.five.map(p=>p.id); }
 function viewLineup(){ const five=S.lineup.map(id=>E.P[id]); const net=fiveNet(five), pen=oopPenalty(five), ew=expectedWins(five);
@@ -288,9 +288,9 @@ function cells(ps){ return `<div class="adv">${teamCells(ps).map(([n,v,k,c])=>`<
 
 const recCls=(w,l)=>w>l?'volt':w===l?'':'mut';
 function viewHome(){ const b=S.bestTeam;
-  return `<div class="stage"><div class="big">Build<br>a five.<small>Five packs, a $100M cap. Your five plays a full 82-game season against real teams. The record is the score. The best five ever went 73-9.</small></div>
+  return `<div class="stage"><div class="big hero">Build<br>a five.<small>Five packs, a $100M cap. Your five plays a full 82-game season against real teams. The record is the score. The best five ever went 73-9.</small></div>
     <div class="cells"><div><b class="${b?'volt':''}">${b?`${S.bestW}-${S.bestL}`:'—'}</b><i>Your best</i></div><div><b>${S.seasons.length}</b><i>Seasons</i></div><div><b>73-9</b><i>The record</i></div><div><b>82-0</b><i>The dream</i></div></div>
-    <button class="big-cta" data-chooser>Build a five</button>
+    <button class="big-cta" data-draft="free">Build a five</button>
     <p class="sub dim">Engine v2 · fitted to 450 real playoff series · 76% correct · every game a fresh draw from the calibrated probability</p></div>`; }
 function viewChooser(){ return `<div class="stage"><div class="big">How do you<br>want to build?</div>
     <button class="choice" data-draft="free"><b>Spin the wheel</b><span>Five clubs land on the wheel, one man from each. Luck picks the clubs, you pick the men.</span></button>
@@ -343,7 +343,7 @@ function viewDraft(){ const pk=S.packs[S.draftIdx]; if(!pk) return viewTeam(); c
   const dock=`<div class="dock"><div class="cap"><span>Your five · pack ${S.draftIdx+1} of 5</span><b>$${left}M</b></div>
     <div class="five5">${[0,1,2,3,4].map(i=>{const q=S.picks[i]; return `<div class="f5 ${q?'on':''}" ${q?`data-kinfo="${q.id}"`:''}><i>${q?q.eligible[0]:'·'}</i>${q?`<b>${last(q)}</b><em>$${price(q)}M</em>`:'<b class="open">open</b>'}</div>`;}).join('')}</div></div>`;
   if(!S.pack) return `<div class="stage draft wheelstage">
-    <div class="wheel ${W&&W.spinning?'live':''}" data-lock><span class="wmark">◀</span><div id="wheelrows">${W?wheelRows():''}</div></div>
+    <div class="wheel ${W&&W.spinning?'live':''}" data-lock><div id="wheelrows">${W?wheelRows():''}</div></div>
     <p class="sub dim" style="text-align:center;margin-top:14px">${W&&W.spinning?'Tap to stop':''}</p></div>${dock}`;
   /* every man appears exactly once: in his primary column, unless a column would be empty —
      then up to two men who can also play it are MOVED there from the columns that can spare them */
@@ -503,6 +503,9 @@ function render(){ const app=$('app'); let body='';
   app.innerHTML=`<div class="phone${S.view==='draft'?' drafting':''}"${wash}>${topBar(right)}${body}${tabs()}${S.sheet?`<div class="scrim" data-close></div>${S.sheet.kind==='stat'?statSheet(S.sheet.id):S.sheet.kind==='player'?playerSheet(S.sheet.id):teamSheet(S.sheet.id)}`:''}</div>`;
   const q=$('vsq'); if(q){ q.addEventListener('input',e=>{S.vsQuery=e.target.value; const v=S.view; render(); const q2=$('vsq'); if(q2){q2.focus(); q2.setSelectionRange(q2.value.length,q2.value.length);} }); }
   window.scrollTo(0,0); }
+/* swipe down on a sheet closes it: only when the sheet body is scrolled to the top */
+(function(){ let y0=null, sc=null; document.addEventListener('touchstart',e=>{ const sh=e.target.closest&&e.target.closest('.sheet'); if(!sh) return; const body=sh.querySelector('.psbody')||sh; y0=e.touches[0].clientY; sc=body.scrollTop; },{passive:true});
+  document.addEventListener('touchend',e=>{ if(y0==null) return; const dy=e.changedTouches[0].clientY-y0; if(sc<=0&&dy>90&&S.sheet){ S.sheet=null; render(); } y0=null; },{passive:true}); })();
 document.addEventListener('click',e=>{ const c=s=>e.target.closest(s);
   let el;
   if(c('[data-close]')){ S.sheet=null; render(); return; }

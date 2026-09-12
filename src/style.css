@@ -561,3 +561,8 @@ button,input{font:inherit;color:inherit}button{background:none;border:0;cursor:p
 .kc.narrow .kname{overflow:hidden!important;white-space:nowrap!important;-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 26px),transparent 100%);mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 26px),transparent 100%)}
 /* card small row: OFF · DEF (percentiles) · USG · 3PAr (fit) */
 .kc .ksml.kod4 b{font-size:15px}.kc .ksml.kod4 div:nth-child(-n+2) b{font-size:17px}
+/* mobile pass: no pull-to-refresh, sheets scroll inside themselves, big home header, no wheel arrow */
+html,body{overscroll-behavior-y:none}
+.big.hero{font-size:72px;line-height:.86;letter-spacing:-.03em;margin-top:26px}.big.hero small{font-size:14px;margin-top:16px}
+.sheet.ps{max-height:100dvh;height:100dvh;border-radius:0}.sheet.ps .psbody{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.wmark{display:none}

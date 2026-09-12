@@ -10,15 +10,14 @@ function click(attr,val){ const re=new RegExp(attr+(val!=null?'="'+val+'"':'(=|[
   const el={dataset:{}}; const key=attr.replace(/^data-/,'').replace(/-([a-z])/g,(m,c)=>c.toUpperCase()); el.dataset[key]=val!=null?String(val):'';
   el.closest=sel=>{const m=sel.match(/^\[([^\]=]+)(?:="([^"]*)")?\]$/); return (m&&m[1]===attr&&(m[2]==null||m[2]===String(val)))?el:null;}; listeners.click({target:el}); }
 const has=t=>app.innerHTML.includes(t); let fails=0; const ok=(c,m)=>{ if(!c){fails++;console.log('FAIL',m);} else console.log('ok  ',m); };
-ok(S.tab==='build'&&has('data-chooser')&&has('73-9')&&!has('data-draft="daily"'),'start: Build a five, 73-9, no daily');
-click('data-chooser'); click('data-draft','free'); if(!S.pack) click('data-lock'); ok(S.view==='draft'&&S.pack&&has('class="kboard"')&&has('class="dock"'),'draft: wheel landed, board + dock');
+ok(S.tab==='build'&&has('data-draft="free"')&&has('73-9')&&!has('data-draft="daily"'),'start: Build a five, 73-9, no daily');
+click('data-draft','free'); if(!S.pack) click('data-lock'); ok(S.view==='draft'&&S.pack&&has('class="kboard"')&&has('class="dock"'),'draft: wheel landed, board + dock');
 for(let i=0;i<5;i++){ if(!S.pack){ok(false,'no pack '+i);break;} const m=[...app.innerHTML.matchAll(/data-pick="([^"]+)" data-now="1"/g)].map(x=>[x[0],x[1],'']);
   if(!m.length){ if(has('data-reroll')){ click('data-reroll'); i--; continue; } ok(false,'no signable in pack '+i); break; }
   const pairs=m.map(x=>[x[1],'']).sort((a,b)=>X.E.P[b[0]].capPct-X.E.P[a[0]].capPct); if(S.picks.length>=2) pairs.reverse(); const [pid,slot]=pairs[0];
   const el={dataset:{pick:pid,slot}}; el.closest=sel=>sel==='[data-pick]'?el:null; listeners.click({target:el}); }
-ok(S.view==='lineup'&&has('class="lineup"')&&has('data-play-season'),'five signed → line-up screen');
-const before=S.lineup.slice(); click('data-lu',0); click('data-lu',1); ok(S.lineup[0]===before[1]&&S.lineup[1]===before[0],'tap two men to swap'); click('data-lu-best'); ok(S.lineup.join()===before.join(),'best line-up restores');
-click('data-play-season'); ok(S.team&&S.team.length===5&&S.season&&S.tab==='season','season played: '+S.season.w+'-'+S.season.l);
+ok(S.team&&S.team.length===5&&S.season&&S.tab==='season','five signed → best line-up → season: '+S.season.w+'-'+S.season.l);
+ok(S.team.every((id,i)=>S.picks.some(p=>p.id===id)),'line-up is the five picked');
 ok(S.season.w+S.season.l===82&&S.season.games.length===82,'82 games');
 ok(has('class="ladder"')&&has('Your five · season 1')&&has('of ')&&has('real seasons'),'ladder with your rank');
 ok(has('Where the '+S.season.l+' losses came from'),'loss lessons header');

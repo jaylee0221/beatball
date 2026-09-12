@@ -3,7 +3,7 @@ const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 const listeners={}; const app={innerHTML:'',addEventListener(){},querySelector(){return null},querySelectorAll(){return []}};
 const win={console,Math,Date,JSON,Set,Map,Array,Object,Number,String,parseInt,parseFloat,isNaN,Infinity,NaN,Error,setTimeout,clearTimeout,URLSearchParams,
  document:{getElementById:id=>id==='app'?app:null,addEventListener(t,f){listeners[t]=f}},localStorage:{_:{},getItem(k){return this._[k]??null},setItem(k,v){this._[k]=String(v)},removeItem(k){delete this._[k]}},
- location:{search:'',hash:'',href:''},navigator:{},performance:{now:()=>Date.now()},scrollTo(){}};
+ location:{search:'',hash:'',href:''},navigator:{},performance:{now:()=>Date.now()},scrollTo(){},addEventListener(){}};
 win.window=win; vm.createContext(win); scripts.forEach((s,i)=>vm.runInContext(s,win,{filename:'s'+i}));
 const X=win.__bb, S=X.S;
 function click(attr,val){ const re=new RegExp(attr+(val!=null?'="'+val+'"':'(=|[\\s>])')); if(!re.test(app.innerHTML)) throw new Error('no element '+attr+(val!=null?'='+val:'')+' in view');

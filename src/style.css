@@ -566,3 +566,9 @@ html,body{overscroll-behavior-y:none}
 .big.hero{font-size:72px;line-height:.86;letter-spacing:-.03em;margin-top:26px}.big.hero small{font-size:14px;margin-top:16px}
 .sheet.ps{max-height:100dvh;height:100dvh;border-radius:0}.sheet.ps .psbody{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 .wmark{display:none}
+/* iPhone: keep the chrome below the status bar / notch (black-translucent status bar extends the page under it) */
+.phone{padding-top:env(safe-area-inset-top)}
+.sheet.ps{padding-top:env(safe-area-inset-top)}
+.sheet{padding-top:calc(12px + env(safe-area-inset-top))}
+.dock{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+.tabs{padding-bottom:env(safe-area-inset-bottom)}

@@ -113,3 +113,4 @@ ALL PASS
 ## Other notes
 - Python deps are in `~/.venvs/beatball` (requests, beautifulsoup4, lxml, nba_api), outside the repo. Homebrew Python blocks `pip install` (PEP 668).
 - GitHub Pages serves main, so none of this is live.
+- **Push:** I tried `git push -u origin overnight` and it was rejected. The GitHub token lacks the `workflow` scope, so it can't push `.github/workflows/today.yml`. The commits are on the local `overnight` branch only. To push: run `gh auth refresh -s workflow` and push again, or push without the workflow file.

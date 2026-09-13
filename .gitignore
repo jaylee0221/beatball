@@ -1,3 +1,4 @@
 data/bundle-lite.js
 __pycache__/
 .DS_Store
+tools/.cache/

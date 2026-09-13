@@ -44,6 +44,15 @@ for p in D['players']:
     players.append({'id':pid,'nbaId':p['nbaId'],'name':p['name'],'season':p['season'],'abbr':p['abbr'],'age':p['age'],'gp':p['gp'],'gs':p['gs'],'min':p['min'],
         'eligible':merge_elig(CAP[k]['eligible'] if k in CAP else None, eligible(p,bio)),'ht':bio.get('ht'),'pos':bio.get('pos',''),'jersey':bio.get('jersey',''),
         'capPct':CAP[k]['capPct'] if k in CAP else None,'pg':p['pg'],'p100':p['p100'],'adv':p['adv']})
+# salary holes: data/salary-new.json (tools/salary.py, basketball-reference) fills only a capPct the old file lacks
+import os
+_sn=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','data','salary-new.json')
+if os.path.exists(_sn):
+    SN=json.load(open(_sn))['salaries']; _f=0
+    for p in players:
+        k=f"{p['nbaId']}:{p['season']}"
+        if p['capPct'] is None and k in SN: p['capPct']=SN[k]['capPct']; _f+=1
+    print('salary-new filled',_f)
 byteam=collections.defaultdict(list)
 for p in players: byteam[(p['season'],p['nbaId'])]=p
 team_players=collections.defaultdict(list)

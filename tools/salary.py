@@ -14,9 +14,8 @@ CACHE = os.path.join(ROOT, 'tools', '.cache', 'bbref')
 BASE = 'https://www.basketball-reference.com'
 WAIT = 4.0  # sports-reference allows 20 requests/minute; stay under it
 UA = {'User-Agent': 'Mozilla/5.0 (fantasyball salary backfill; one-off, cached)'}
-# the holes: seasons where (almost) nobody has a salary. Only null capPct values are ever filled.
-SEASONS = ['1996-97', '1997-98', '1998-99', '1999-00', '2002-03', '2003-04', '2004-05',
-           '2020-21', '2021-22', '2022-23', '2023-24', '2024-25', '2025-26']
+# every bundle season; only null capPct values are ever filled (the old file covered about half of each roster)
+SEASONS = [f'{y}-{str(y + 1)[-2:]}' for y in range(1996, 2026)]
 
 def end_year(season): return int(season[:4]) + 1
 
@@ -57,6 +56,9 @@ def caps():
     rows = re.findall(r'data-stat="year_id"[^>]*>(?:<a[^>]*>)?(\d{4}-\d{2})(?:</a>)?</th>\s*<td[^>]*data-stat="cap"[^>]*>\$([\d,]+)', h)
     return {s: int(v.replace(',', '')) for s, v in rows}
 
+def old():
+    return json.load(open(os.path.join(ROOT, 'data', 'salary-old.json')))
+
 def bundle():
     return json.load(open(os.path.join(ROOT, 'data', 'bundle-full.json')))
 
@@ -74,10 +76,14 @@ def fetch():
         print(f'{i+1}/{len(pages)} {s} {a}->{code}', 'cached' if cached else 'fetched' if h else 'MISSING', flush=True)
 
 SUFFIX = re.compile(r'\b(jr|sr|ii|iii|iv|v)\b')
+# nba.com name -> bbref name, where no rule can bridge them (name changes, single names)
+ALIAS = {'enes freedom': 'enes kanter', 'nene': 'nene hilario'}
 def norm(name):
+    name = name.replace('ё', 'e').replace('е', 'e')  # bbref writes Egor Dëmin with a Cyrillic ё
     n = unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode().lower()
     n = re.sub(r'[^a-z ]', '', n.replace('-', ' '))
-    return ' '.join(SUFFIX.sub('', n).split())
+    n = ' '.join(SUFFIX.sub('', n).split())
+    return ALIAS.get(n, n)
 
 def build():
     B = bundle(); CAPS = caps()
@@ -104,7 +110,8 @@ def build():
     sur = lambda n: (n.split()[-1], n[:1]) if n else ('', '')
     by_sur = collections.defaultdict(list)
     for (s, a, n), val in by_team.items(): by_sur[(s, a) + sur(n)].append(val)
-    need = [p for p in B['players'] if p['season'] in SEASONS and p['capPct'] is None]
+    OLD = old()  # decide by the old file, not by null: re-running after `apply` must rebuild every new salary
+    need = [p for p in B['players'] if p['season'] in SEASONS and f"{p['nbaId']}:{p['season']}" not in OLD]
     names_in_bundle = collections.Counter((p['season'], norm(p['name'])) for p in B['players'])
     sur_in_bundle = collections.Counter((p['season'], p['abbr']) + sur(norm(p['name'])) for p in B['players'])
     out, miss = {}, []
@@ -135,12 +142,12 @@ def build():
           'unmatched starters', sum(m['starter'] for m in miss))
 
 def apply():
-    """Same rule as tools/bundle.py: salary-new only fills a capPct that is null."""
+    """Same rule as tools/bundle.py: salary-new only fills player-seasons the old file doesn't have (safe to re-run)."""
     fn = os.path.join(ROOT, 'data', 'bundle-full.json'); B = json.load(open(fn))
-    S = json.load(open(os.path.join(ROOT, 'data', 'salary-new.json')))['salaries']; n = 0
+    S = json.load(open(os.path.join(ROOT, 'data', 'salary-new.json')))['salaries']; OLD = old(); n = 0
     for p in B['players']:
         k = f"{p['nbaId']}:{p['season']}"
-        if p['capPct'] is None and k in S: p['capPct'] = round(S[k]['capPct'], 3); n += 1
+        if k not in OLD and k in S: p['capPct'] = round(S[k]['capPct'], 3); n += 1
     json.dump(B, open(fn, 'w'), separators=(',', ':'))
     print('filled', n)
 

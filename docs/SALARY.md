@@ -5,13 +5,13 @@
 ## Sources
 - **Old** (`data/salary-old.json`, merged by `tools/bundle.py`): hand-built file, keyed `nbaId:season`.
 - **New** (`data/salary-new.json`, `tools/salary.py`): basketball-reference team pages (the "Salaries" table) and the salary-cap history page. It only fills a `capPct` that is still null; it never overwrites the old file.
-  - Seasons scraped: 1996-97 – 1999-00, 2002-03 – 2004-05, 2020-21 – 2025-26 (13 seasons, 384 team pages, 4s apart, cached in `tools/.cache/bbref/`, gitignored).
+  - Seasons scraped: all 30 (1996-97 – 2025-26), 892 team pages, 4s apart, cached in `tools/.cache/bbref/` (gitignored). It fills every player-season that isn't in `salary-old.json`.
   - Matching (bbref has no nbaId), in order:
-    1. name + team + season (4,054)
-    2. name + season, when only one player with that name played that season (traded players; the highest figure wins) (166)
-    3. surname + first initial + team + season, when exactly one player on each side (Steven/Steve Smith, Mo/Mohamed Bamba, GG/Gregory Jackson) (32; all checked by hand)
-  - Names are compared without accents, punctuation, or Jr/II/III suffixes.
-  - Unmatched: `data/salary-unmatched.csv` (105 player-seasons, 9 of them starters). In every case bbref's table has no row for the player.
+    1. name + team + season (6,473)
+    2. name + season, when only one player with that name played that season (traded players; the highest figure wins) (262)
+    3. surname + first initial + team + season, when exactly one player on each side (Steven/Steve Smith, Mo/Mohamed Bamba, GG/Gregory Jackson, Patty/Patrick Mills, J.J./Jose Barea) (55; all checked by hand)
+  - Names are compared without accents, punctuation, or Jr/II/III suffixes. Aliases for name changes: Enes Freedom = Enes Kanter, Nene = Nene Hilario. Cyrillic ё/е (Egor Dёmin) is read as e.
+  - Unmatched: `data/salary-unmatched.csv` (141 player-seasons, 9 of them starters). In every case bbref's table has no row for the player.
 
 ## Rebuild
 ```
@@ -28,9 +28,26 @@ node tools/lite.js
 | 1997-98 | $26,900,000 |
 | 1998-99 | $30,000,000 |
 | 1999-00 | $34,000,000 |
+| 2000-01 | $35,500,000 |
+| 2001-02 | $42,500,000 |
 | 2002-03 | $40,271,000 |
 | 2003-04 | $43,840,000 |
 | 2004-05 | $43,870,000 |
+| 2005-06 | $49,500,000 |
+| 2006-07 | $53,135,000 |
+| 2007-08 | $55,630,000 |
+| 2008-09 | $58,680,000 |
+| 2009-10 | $57,700,000 |
+| 2010-11 | $58,044,000 |
+| 2011-12 | $58,044,000 |
+| 2012-13 | $58,044,000 |
+| 2013-14 | $58,679,000 |
+| 2014-15 | $63,065,000 |
+| 2015-16 | $70,000,000 |
+| 2016-17 | $94,143,000 |
+| 2017-18 | $99,093,000 |
+| 2018-19 | $101,869,000 |
+| 2019-20 | $109,140,000 |
 | 2020-21 | $109,140,000 |
 | 2021-22 | $112,414,000 |
 | 2022-23 | $123,655,000 |
@@ -47,36 +64,36 @@ node tools/lite.js
 | 1997-98 | 0 | 302 / 312 | 97% | 305 | 302 |
 | 1998-99 | 0 | 280 / 295 | 95% | 284 | 280 |
 | 1999-00 | 21 | 312 / 314 | 99% | 312 | 312 |
-| 2000-01 | 175 | 175 / 314 | 56% | 242 | 175 |
-| 2001-02 | 193 | 193 / 311 | 62% | 257 | 193 |
+| 2000-01 | 175 | 312 / 314 | 99% | 312 | 312 |
+| 2001-02 | 193 | 306 / 311 | 98% | 307 | 306 |
 | 2002-03 | 101 | 318 / 319 | 100% | 318 | 318 |
 | 2003-04 | 27 | 320 / 325 | 98% | 320 | 320 |
 | 2004-05 | 27 | 331 / 340 | 97% | 331 | 331 |
-| 2005-06 | 186 | 186 / 321 | 58% | 257 | 186 |
-| 2006-07 | 173 | 173 / 313 | 55% | 252 | 173 |
-| 2007-08 | 186 | 186 / 320 | 58% | 250 | 186 |
-| 2008-09 | 191 | 191 / 327 | 58% | 261 | 191 |
-| 2009-10 | 193 | 193 / 332 | 58% | 263 | 193 |
-| 2010-11 | 195 | 195 / 344 | 57% | 271 | 195 |
-| 2011-12 | 217 | 217 / 357 | 61% | 281 | 217 |
-| 2012-13 | 190 | 190 / 349 | 54% | 264 | 190 |
-| 2013-14 | 172 | 172 / 343 | 50% | 249 | 172 |
-| 2014-15 | 200 | 200 / 376 | 53% | 275 | 200 |
-| 2015-16 | 203 | 203 / 352 | 58% | 268 | 203 |
-| 2016-17 | 208 | 208 / 360 | 58% | 274 | 208 |
-| 2017-18 | 180 | 180 / 381 | 47% | 251 | 180 |
-| 2018-19 | 217 | 217 / 379 | 57% | 282 | 217 |
-| 2019-20 | 197 | 197 / 371 | 53% | 272 | 197 |
+| 2005-06 | 186 | 319 / 321 | 99% | 319 | 319 |
+| 2006-07 | 173 | 312 / 313 | 100% | 312 | 312 |
+| 2007-08 | 186 | 319 / 320 | 100% | 319 | 319 |
+| 2008-09 | 191 | 325 / 327 | 99% | 325 | 325 |
+| 2009-10 | 193 | 330 / 332 | 99% | 330 | 330 |
+| 2010-11 | 195 | 342 / 344 | 99% | 342 | 342 |
+| 2011-12 | 217 | 352 / 357 | 99% | 352 | 352 |
+| 2012-13 | 190 | 347 / 349 | 99% | 347 | 347 |
+| 2013-14 | 172 | 332 / 343 | 97% | 332 | 332 |
+| 2014-15 | 200 | 375 / 376 | 100% | 375 | 375 |
+| 2015-16 | 203 | 352 / 352 | 100% | 352 | 352 |
+| 2016-17 | 208 | 360 / 360 | 100% | 360 | 360 |
+| 2017-18 | 180 | 381 / 381 | 100% | 381 | 381 |
+| 2018-19 | 217 | 378 / 379 | 100% | 378 | 378 |
+| 2019-20 | 197 | 371 / 371 | 100% | 371 | 371 |
 | 2020-21 | 0 | 384 / 384 | 100% | 384 | 384 |
 | 2021-22 | 0 | 393 / 393 | 100% | 393 | 393 |
 | 2022-23 | 8 | 372 / 381 | 98% | 372 | 372 |
 | 2023-24 | 0 | 365 / 374 | 98% | 365 | 365 |
 | 2024-25 | 0 | 377 / 394 | 96% | 377 | 377 |
-| 2025-26 | 0 | 378 / 397 | 95% | 379 | 378 |
-| **Total** | 3460 | 7712 / 10391 | 74% | 8914 | 7712 |
+| 2025-26 | 0 | 379 / 397 | 95% | 379 | 379 |
+| **Total** | 3460 | 10250 / 10391 | 99% | 10259 | 10250 |
 
-Coverage is still 47–62% in the seasons that weren't scraped (2000-01, 2001-02, 2005-06 – 2019-20); the old file only covered about half of each roster.
+Coverage is 95–100% in every season. The gaps are mostly late-'90s players missing from bbref's old tables and current-season players on 10-day or two-way deals.
 
 ## Notes
-- capPct above 1 is real: Michael Jordan 1996-97 $30.14M on a $24.36M cap (1.24), 1997-98 $33.14M (1.23). Ewing, Garnett, O'Neal, and Grant Hill are 0.51–0.76 in the late '90s.
-- 258 new player-seasons are under 1% of the cap: 10-day, two-way, or waived deals where bbref lists the prorated amount paid (e.g. Mo Bamba 2024-25 $119,972). The game prices them at the $1M floor.
+- capPct above 1 is real: Michael Jordan 1996-97 $30.14M on a $24.36M cap (1.24), 1997-98 $33.14M (1.23). Ewing, Garnett, O'Neal, and Grant Hill are 0.51–0.76 in the late '90s. Not capped on purpose: Jordan's price is over the $100M cap, so he can't be signed.
+- 428 new player-seasons are under 1% of the cap: 10-day, two-way, or waived deals where bbref lists the prorated amount paid (e.g. Mo Bamba 2024-25 $119,972). The game prices them at the $1M floor (confirmed: keep as is).
